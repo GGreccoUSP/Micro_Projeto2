@@ -1,0 +1,89 @@
+//definição bits do display
+sbit LCD_RS at LATD4_bit;
+sbit LCD_EN at LATD5_bit;
+sbit LCD_D7 at LATD3_bit;
+sbit LCD_D6 at LATD2_bit;
+sbit LCD_D5 at LATD1_bit;
+sbit LCD_D4 at LATD0_bit;
+
+//direções dos pinos
+sbit LCD_RS_Direction at TRISD4_bit;
+sbit LCD_EN_Direction at TRISD5_bit;
+sbit LCD_D7_Direction at TRISD3_bit;
+sbit LCD_D6_Direction at TRISD2_bit;
+sbit LCD_D5_Direction at TRISD1_bit;
+sbit LCD_D4_Direction at TRISD0_bit;
+
+int contador = 0;//variável p/ contador
+char Texto[7];    //variável para mudar numero p/ texto
+
+void Interrupt(){
+    
+    if (INT0IF_bit ==1){
+       INT0IF_bit = 0;
+       TMR1ON_bit = 0;
+       contador = 60;
+       TMR0H = 0x0B;// Carrega o Timer 0
+       TMR0L = 0xDC;
+       TMR0ON_bit = 1;} //liga timer 0
+    
+    if(INT1IF_bit == 1){
+       INT1IF_bit = 0;
+       TMR0ON_bit = 0;//desliga timer 0
+       contador = 10;
+       TMR1H = 0x0B;// Carrega o Timer 1
+        TMR1L = 0xDC;
+        TMR1ON_bit= 1;}//liga timer 1
+    
+    if(TMR0IF_bit == 1){
+       TMR0IF_bit = 0;
+        TMR0H = 0x0B;         //recarrega o tempo em 1 segundo
+        TMR0L = 0xDC;
+        contador--;
+        if (contador == 0) {
+            TMR0ON_bit = 0; //desliga Timer0
+        }
+    }
+    if (TMR1IF_bit ==1){//contador de 1 seg
+       TMR1IF_bit = 0;
+       TMR1H = 0x0B;
+       TMR1L = 0xDC;
+      contador--;
+       if (contador ==0){
+          TMR1ON_bit = 0;
+          }
+    }
+}
+void main() {
+     ADCON1 = 0x0F;
+     T0CON = 0B00000100;//configura timer 0
+     TMR0H = 0x0B;
+     TMR0L = 0xDC;
+     T1CON = 0B10110000;//configura timer 1
+     TMR1H = 0x0B;
+     TMR1L = 0xDC;
+     INTCON2.INTEDG0 = 1;
+     INTCON2.INTEDG1 = 1;
+     INT0IF_bit = 0;
+     INT1IF_bit = 0;
+     TMR0IF_bit = 0;
+     TMR1IF_bit = 0;
+     INTCON.INT0IE = 1;
+     INTCON3.INT1IE = 1;
+     TMR0IE_bit = 1;
+     TMR1IE_bit = 1;
+     PEIE_bit = 1;
+     GIE_bit = 1;
+     Lcd_Init();
+     Lcd_Cmd(_LCD_CLEAR);
+     Lcd_Cmd(_LCD_CURSOR_OFF);
+     Lcd_Out(1,1,"HelloWrld: ");
+     Lcd_Out(2, 1, "0");
+     TRISB.F0 = 1;//entrada 0 contagem longa
+     TRISB.F1 = 1;//entrada 1 contagem curta
+
+     while(1) {
+        IntToStr(contador, Texto);
+        Lcd_Out(2, 1, Texto);
+    }
+    }
