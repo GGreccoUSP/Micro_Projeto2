@@ -34,5 +34,10 @@ Um LED conectado ao pino RC0 simula a resistência de um forno:
 Temperatura > 50 °C → LED ligado;
 Temperatura ≤ 50 °C → LED desligado.
 
-Por fim, a imagem abaixo mostra o esquemático realizado na plataforma simulide, com o mapeamento de pinos indicado no início do código (src).
+Por fim, a imagem abaixo mostra o esquemático realizado na plataforma simulide, com o mapeamento de pinos indicado no início do código.
+
 <img width="1363" height="854" alt="image" src="https://github.com/user-attachments/assets/49385b36-6e6a-4112-8a6f-3600954c84f9" />
+
+
+-- Giovanne Tomaszewski Grecco
+-- n° usp: 16228852
