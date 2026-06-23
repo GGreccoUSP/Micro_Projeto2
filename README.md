@@ -38,6 +38,7 @@ Por fim, a imagem abaixo mostra o esquemático realizado na plataforma simulide,
 
 <img width="1363" height="854" alt="image" src="https://github.com/user-attachments/assets/49385b36-6e6a-4112-8a6f-3600954c84f9" />
 
+\
 
 -- Giovanne Tomaszewski Grecco
 
