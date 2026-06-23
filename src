@@ -1,67 +1,138 @@
-//definição bits do display
+//============================================================================
+//   Linha 1 -> "Cont:  XX"        (contagem regressiva, igual ao projeto 2)
+//   Linha 2 -> "Temp:  XX.X \xDFC"  (temperatura lida via ADC, sem usar float)
+//
+// O LED em RC0 continua acendendo sempre que a temperatura passar de 50 °C,
+// representando a resistencia do forno.
+//
+// Ligacoes:
+//   - Botoes/sinais de contagem -> RB0 (INT0, contagem longa) e RB1 (INT1, contagem curta)
+//   - LM35 (Vout) ou cursor do potenciometro -> RA0/AN0
+//   - LED (com resistor em serie, ex. 330 ohm) -> RC0
+//   -Display: D7 -> RD3 ; D6 -> RD2 ; D5 -> RD1 ; D4 -> RD0 ; D3, D2, D1, D0, RW -> 0V ; RS -> RD4 ; En -> RD5 
+//============================================================================
+ 
+// Pinos do display LCD
 sbit LCD_RS at LATD4_bit;
 sbit LCD_EN at LATD5_bit;
 sbit LCD_D7 at LATD3_bit;
 sbit LCD_D6 at LATD2_bit;
 sbit LCD_D5 at LATD1_bit;
 sbit LCD_D4 at LATD0_bit;
-
-//direções dos pinos
+ 
 sbit LCD_RS_Direction at TRISD4_bit;
 sbit LCD_EN_Direction at TRISD5_bit;
 sbit LCD_D7_Direction at TRISD3_bit;
 sbit LCD_D6_Direction at TRISD2_bit;
 sbit LCD_D5_Direction at TRISD1_bit;
 sbit LCD_D4_Direction at TRISD0_bit;
+ 
+// LED indicador da resistencia do forno
+sbit LED_Forno           at LATC0_bit;
+sbit LED_Forno_Direction at TRISC0_bit;
+ 
+// Variaveis do contador regressivo
+int  contador = 0;          // variavel do contador
+char TextoContador[7];       // string para o valor do contador (IntToStr exige 7 bytes)
+ 
+// Variaveis da temperatura
+unsigned int  leitura_adc;   // valor bruto do ADC (0 a 1023)
+unsigned long temp_x10;      // temperatura x10, em decimos de grau -> sem usar float
+char TextoTemp[10];          // string final "XX.X \xDFC" pronta para o LCD
 
-int contador = 0;//variável p/ contador
-char Texto[7];    //variável para mudar numero p/ texto
 
-void Interrupt(){
-    
-    if (INT0IF_bit ==1){
+// Rotina de interrupcao - (contagem regressiva via Timer0/Timer1,
+// disparados pelas entradas externas INT0 e INT1)
+
+void Interrupt() {
+ 
+    if (INT0IF_bit == 1) {
        INT0IF_bit = 0;
        TMR1ON_bit = 0;
        contador = 60;
-       TMR0H = 0x0B;// Carrega o Timer 0
+       TMR0H = 0x0B;          // carrega o Timer 0
        TMR0L = 0xDC;
-       TMR0ON_bit = 1;} //liga timer 0
-    
-    if(INT1IF_bit == 1){
-       INT1IF_bit = 0;
-       TMR0ON_bit = 0;//desliga timer 0
-       contador = 10;
-       TMR1H = 0x0B;// Carrega o Timer 1
-        TMR1L = 0xDC;
-        TMR1ON_bit= 1;}//liga timer 1
-    
-    if(TMR0IF_bit == 1){
-       TMR0IF_bit = 0;
-        TMR0H = 0x0B;         //recarrega o tempo em 1 segundo
-        TMR0L = 0xDC;
-        contador--;
-        if (contador == 0) {
-            TMR0ON_bit = 0; //desliga Timer0
-        }
+       TMR0ON_bit = 1;        // liga timer 0
     }
-    if (TMR1IF_bit ==1){//contador de 1 seg
+ 
+    if (INT1IF_bit == 1) {
+       INT1IF_bit = 0;
+       TMR0ON_bit = 0;        // desliga timer 0
+       contador = 10;
+       TMR1H = 0x0B;          // carrega o Timer 1
+       TMR1L = 0xDC;
+       TMR1ON_bit = 1;        // liga timer 1
+    }
+ 
+    if (TMR0IF_bit == 1) {
+       TMR0IF_bit = 0;
+       TMR0H = 0x0B;          // recarrega o tempo em 1 segundo
+       TMR0L = 0xDC;
+       contador--;
+       if (contador == 0) {
+           TMR0ON_bit = 0;    // desliga Timer0
+       }
+    }
+ 
+    if (TMR1IF_bit == 1) {    // contador de 1 seg
        TMR1IF_bit = 0;
        TMR1H = 0x0B;
        TMR1L = 0xDC;
-      contador--;
-       if (contador ==0){
-          TMR1ON_bit = 0;
-          }
+       contador--;
+       if (contador == 0) {
+           TMR1ON_bit = 0;
+       }
     }
 }
+ 
+
+// Converte a temperatura (em decimos de grau) para a string "XX.X °C",
+
+void Formata_Temperatura(unsigned long valor_x10, char *saida) {
+    unsigned int inteiro, decimo;
+    unsigned char dezena, unidade;
+    unsigned char i = 0;
+ 
+    inteiro = valor_x10 / 10;     // parte inteira da temperatura (0 a 100)
+    decimo  = valor_x10 % 10;     // digito decimal (decimos de grau)
+ 
+    if (inteiro >= 100) {
+        // caso especial: exatamente 100.0 °C (limite superior da faixa)
+        saida[i++] = '1';
+        saida[i++] = '0';
+        saida[i++] = '0';
+    } else {
+        dezena  = inteiro / 10;     // garante o zero a esquerda (ex.: "05.3")
+        unidade = inteiro % 10;
+        saida[i++] = dezena  + '0';
+        saida[i++] = unidade + '0';
+    }
+ 
+    saida[i++] = '.';
+    saida[i++] = decimo + '0';
+    saida[i++] = ' ';
+    saida[i++] = 0xDF;            // caractere de grau (°) na ROM padrao do LCD
+    saida[i++] = 'C';
+    saida[i]   = 0;               // terminador da string
+}
+ 
 void main() {
-     ADCON1 = 0x0F;
-     T0CON = 0B00000100;//configura timer 0
+ 
+     // Configuracao do ADC
+     // 0x0E deixa AN0/RA0 analogico (sensor) e mantem todo o resto digital;
+     // isso nao interfere em nada do PORTB/PORTC/PORTD usados pelo contador.
+     ADCON1 = 0x0E;
+ 
+     // Configuracao dos Timers
+     T0CON = 0B00000100;     // configura Timer 0
      TMR0H = 0x0B;
      TMR0L = 0xDC;
-     T1CON = 0B10110000;//configura timer 1
+ 
+     T1CON = 0B10110000;     // configura Timer 1
      TMR1H = 0x0B;
      TMR1L = 0xDC;
+ 
+     // Configuracao das interrupcoes externas
      INTCON2.INTEDG0 = 1;
      INTCON2.INTEDG1 = 1;
      INT0IF_bit = 0;
@@ -74,16 +145,47 @@ void main() {
      TMR1IE_bit = 1;
      PEIE_bit = 1;
      GIE_bit = 1;
+ 
+     // Entradas dos sinais de contagem
+     TRISB.F0 = 1;   // entrada 0 - contagem longa (INT0)
+     TRISB.F1 = 1;   // entrada 1 - contagem curta (INT1)
+ 
+     // Entrada do sensor de temperatura
+     TRISA.F0 = 1;   // RA0/AN0 - LM35 ou potenciometro
+ 
+     // Saida do LED
+     LED_Forno_Direction = 0;   // RC0 como saida
+     LED_Forno = 0;             // LED apagado no inicio
+ 
+     // Inicializacao do LCD
      Lcd_Init();
      Lcd_Cmd(_LCD_CLEAR);
      Lcd_Cmd(_LCD_CURSOR_OFF);
-     Lcd_Out(1,1,"HelloWrld: ");
-     Lcd_Out(2, 1, "0");
-     TRISB.F0 = 1;//entrada 0 contagem longa
-     TRISB.F1 = 1;//entrada 1 contagem curta
-
-     while(1) {
-        IntToStr(contador, Texto);
-        Lcd_Out(2, 1, Texto);
+     Lcd_Out(1, 1, "Cont: ");    // rotulo fixo da linha 1 (colunas 1-6)
+     Lcd_Out(2, 1, "Temp: ");    // rotulo fixo da linha 2 (colunas 1-6)
+ 
+     while (1) {
+ 
+        // Atualiza a contagem regressiva (linha 1, a partir da coluna 7)
+        IntToStr(contador, TextoContador);
+        Lcd_Out(1, 7, TextoContador);
+ 
+        // Atualiza a temperatura (linha 2, a partir da coluna 7)
+        leitura_adc = ADC_Read(0);                              // le o canal AN0 (0 a 1023)
+        temp_x10 = ((unsigned long)leitura_adc * 5000UL) / 1024UL; // conversao sem float (ver nota no projeto 3)
+        if (temp_x10 > 1000) temp_x10 = 1000;                    // limita em 100.0 °C
+ 
+        Formata_Temperatura(temp_x10, TextoTemp);
+        Lcd_Out(2, 7, "          ");   // limpa o restante da linha (colunas 7 a 16)
+        Lcd_Out(2, 7, TextoTemp);
+ 
+        // Acionamento do LED (resistencia do forno)
+        if (temp_x10 > 500) {          // temperatura > 50.0 °C
+            LED_Forno = 1;
+        } else {
+            LED_Forno = 0;
+        }
+ 
+        Delay_ms(200);   // pequena pausa entre leituras de temperatura
     }
-    }
+}
