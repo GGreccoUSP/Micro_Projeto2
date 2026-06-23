@@ -4,7 +4,7 @@ O projeto teve seu código desenvolvido e testado na IDE MikroC, e seu circuito 
 Funcionalidades Principais do sistema:
 
 
---Temporizador Regressivo
+- Temporizador Regressivo
 
 O sistema possui dois modos de operação:
 
@@ -14,7 +14,7 @@ RB1 (INT1): inicia uma contagem regressiva de 10 segundos.
 A contagem é controlada por interrupções e temporizadores internos (Timer0 e Timer1), garantindo precisão temporal sem bloquear a execução do programa principal.
 
 
---Monitoramento de Temperatura
+- Monitoramento de Temperatura
 
 A temperatura é adquirida pelo canal analógico AN0 (RA0) através do conversor ADC de 10 bits do PIC.
 
@@ -27,7 +27,7 @@ Faixa limitada entre 0 °C e 100 °C;
 Exibição em tempo real no LCD.
 
 
---Controle da Resistência (LED)
+- Controle da Resistência (LED)
 
 Um LED conectado ao pino RC0 simula a resistência de um forno:
 
@@ -40,4 +40,5 @@ Por fim, a imagem abaixo mostra o esquemático realizado na plataforma simulide,
 
 
 -- Giovanne Tomaszewski Grecco
+
 -- n° usp: 16228852
